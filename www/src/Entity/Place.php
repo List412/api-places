@@ -106,4 +106,15 @@ class Place
 
         return $this;
     }
+
+    public function toArray()
+    {
+        return [
+            'name' => $this->getName(),
+            'description' => $this->getDescription(),
+            'lat' => $this->getLat(),
+            'lng' => $this->getLng(),
+            'type' => $this->getType()->getName()
+        ];
+    }
 }
