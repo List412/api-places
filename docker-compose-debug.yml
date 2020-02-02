@@ -8,7 +8,7 @@ services:
             - "80:80"
             - "443:443"
         volumes:
-            - ./hosts:/etc/nginx/conf.d
+            - ./hosts_debug:/etc/nginx/conf.d
             - ./www:/var/www/
             - ./logs:/var/log/nginx
 
@@ -29,6 +29,8 @@ services:
         
         volumes:
             - ./www:/var/www
+        environment:
+            XDEBUG_CONFIG: remote_host=192.168.43.101
     mysql:
         image: mysql:8
 
