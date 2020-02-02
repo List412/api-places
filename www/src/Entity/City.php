@@ -7,9 +7,9 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 /**
- * @ORM\Entity(repositoryClass="App\Repository\PlaceTypeRepository")
+ * @ORM\Entity(repositoryClass="App\Repository\CityRepository")
  */
-class PlaceType
+class City
 {
     /**
      * @ORM\Id()
@@ -24,7 +24,7 @@ class PlaceType
     private $name;
 
     /**
-     * @ORM\OneToMany(targetEntity="App\Entity\Place", mappedBy="type")
+     * @ORM\OneToMany(targetEntity="App\Entity\Place", mappedBy="city")
      */
     private $places;
 
@@ -63,7 +63,7 @@ class PlaceType
     {
         if (!$this->places->contains($place)) {
             $this->places[] = $place;
-            $place->setType($this);
+            $place->setCity($this);
         }
 
         return $this;
@@ -74,8 +74,8 @@ class PlaceType
         if ($this->places->contains($place)) {
             $this->places->removeElement($place);
             // set the owning side to null (unless already changed)
-            if ($place->getType() === $this) {
-                $place->setType(null);
+            if ($place->getCity() === $this) {
+                $place->setCity(null);
             }
         }
 

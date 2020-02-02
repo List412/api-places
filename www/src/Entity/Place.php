@@ -42,6 +42,11 @@ class Place
      */
     private $type;
 
+    /**
+     * @ORM\ManyToOne(targetEntity="App\Entity\City", inversedBy="places")
+     */
+    private $city;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -110,11 +115,24 @@ class Place
     public function toArray()
     {
         return [
+            'id' => $this->getId(),
             'name' => $this->getName(),
             'description' => $this->getDescription(),
             'lat' => $this->getLat(),
             'lng' => $this->getLng(),
             'type' => $this->getType()->getName()
         ];
+    }
+
+    public function getCity(): ?City
+    {
+        return $this->city;
+    }
+
+    public function setCity(?City $city): self
+    {
+        $this->city = $city;
+
+        return $this;
     }
 }
