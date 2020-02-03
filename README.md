@@ -16,6 +16,13 @@ install packages, create database and run migrations
 
 `docker-compose exec php php bin/console doctrine:migrations:migrate`
 
+## project structure
+`hosts` and `hosts_debug` stored nginx configs
+
+`logs` and `mysql` volumes for nginx logs and mysql db
+
+`www` symfony application folder
+
 ## api endpoints
 GET `/nearbyPlace?ip=123.123.123.123&range=1234` get nearby places for location specified by ip address in some range (km), by default user ip address will be tooken
 
