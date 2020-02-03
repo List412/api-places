@@ -3,6 +3,7 @@
 
 namespace App\Service;
 
+use Symfony\Component\HttpClient\Exception\ClientException;
 use Symfony\Component\HttpClient\HttpClient;
 
 class LocationService
@@ -40,10 +41,6 @@ class LocationService
 
     public function getCoordinatesByIp(string $ip)
     {
-        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
-            throw new \Exception('invalid ip');
-        }
-
         $apiKey = $_ENV['IP_GEO_API_KEY'];
 
         $client = HttpClient::create();
@@ -51,8 +48,10 @@ class LocationService
             $response = $client
                 ->request('GET', "https://api.ipgeolocation.io/ipgeo?apiKey=$apiKey&ip=$ip")
                 ->toArray();
-        } catch (\Exception $e) {
-            throw new \Exception('failed to get location for ip:' . $ip);
+        } catch (ClientException $e) {
+            return [
+                'message' => $e->getCode()
+            ];
         }
 
         return [
@@ -74,7 +73,7 @@ class LocationService
         $dist = rad2deg($dist);
         $miles = $dist * 60 * 1.1515;
 
-        return $miles * 1.609344;
+        return $miles * 1.609344 * 1000;
     }
 
     public function getCityGoogle($lat, $long) {
@@ -92,7 +91,4 @@ class LocationService
         }
         return $response;
     }
-
-
-
 }

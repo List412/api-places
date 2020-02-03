@@ -6,6 +6,7 @@
         "ext-ctype": "*",
         "ext-iconv": "*",
         "ext-pdo": "*",
+        "doctrine/annotations": "^1.8",
         "sensio/framework-extra-bundle": "^5.5",
         "symfony/console": "5.0.*",
         "symfony/dotenv": "5.0.*",
@@ -16,6 +17,7 @@
         "symfony/orm-pack": "^1.0",
         "symfony/property-access": "5.0.*",
         "symfony/serializer": "5.0.*",
+        "symfony/validator": "5.0.*",
         "symfony/yaml": "5.0.*"
     },
     "require-dev": {

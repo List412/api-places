@@ -8,13 +8,12 @@ use App\Repository\PlaceRepository;
 use App\Repository\PlaceTypeRepository;
 use App\Service\LocationService;
 use App\Service\YandexGeoCoderService;
-use Doctrine\Common\Collections\Criteria;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use PHPUnit\Exception;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Annotation\Route;
 
-class PlaceController extends AbstractController
+class PlaceController extends BaseController
 {
     /**
      * @param Request $request
@@ -31,7 +30,24 @@ class PlaceController extends AbstractController
         $ip = $request->get('ip') ?? $request->getClientIp();
         $range = intval($request->get('range') ?? 1000);
 
-        $response = $locationService->getCoordinatesByIp($ip);
+        $errors = [];
+        if (!filter_var($ip, FILTER_VALIDATE_IP)) {
+            $errors[] = "Invalid parameter 'ip'";
+        }
+
+        if (!is_int($range) && $range <= 0) {
+            $errors[] = "Parameter 'range' should be integer and greater than 0";
+        }
+
+        try {
+            $response = $locationService->getCoordinatesByIp($ip);
+        } catch (Exception $e) {
+            $errors[] = "Failed to get location for ip: $ip";
+        }
+
+        if (count($errors)) {
+            return $this->error($errors);
+        }
 
         $coef = $range * 0.0000089;
         $latMax = $response['lat'] + $coef;
@@ -51,7 +67,7 @@ class PlaceController extends AbstractController
             return 1;
         });
 
-        return $this->json(array_map(function ($item) { return $item->toArray(); }, $result));
+        return $this->success(array_map(function ($item) { return $item->toArray(); }, $result));
     }
 
     /**
@@ -65,6 +81,7 @@ class PlaceController extends AbstractController
     public function getCityPlaces(Request $request, PlaceRepository $placeRepository, LocationService $locationService)
     {
         $city = $request->get('city');
+
         if (!isset($city)) {
             $ip = $request->getClientIp();
             $city = $locationService->getCoordinatesByIp($ip)['city'];
@@ -72,7 +89,7 @@ class PlaceController extends AbstractController
 
         $result = $placeRepository->findByCity($city);
 
-        return $this->json(array_map(function ($item) { return $item->toArray(); }, $result));
+        return $this->success(array_map(function ($item) { return $item->toArray(); }, $result));
     }
 
     /**
@@ -83,27 +100,30 @@ class PlaceController extends AbstractController
     public function getPlaces(PlaceRepository $repository)
     {
         $products = $repository->findAll();
-        return $this->json(array_map(function ($item) { return $item->toArray(); }, $products));
+        return $this->success(array_map(function ($item) { return $item->toArray(); }, $products));
     }
 
     /**
      * @param int $id
      * @param PlaceRepository $repository
-     * @param YandexGeoCoderService $geoCoderService
      * @return JsonResponse
      * @Route("/place/{id}", name="get_place", methods={"GET"})
      */
-    public function getPlace(int $id, PlaceRepository $repository, YandexGeoCoderService $geoCoderService)
+    public function getPlace(int $id, PlaceRepository $repository)
     {
         $place = $repository->find($id);
 
+        $errors = [];
+
         if (!$place) {
-            throw $this->createNotFoundException(
-                'No place found for id '.$id
-            );
+            $errors[] =  "No place found for id $id";
         }
 
-        return $this->json($place->toArray());
+        if (count($errors)) {
+            return $this->error($errors);
+        }
+
+        return $this->success($place->toArray());
     }
 
     /**
@@ -118,19 +138,29 @@ class PlaceController extends AbstractController
     public function addPlace(Request $request, PlaceTypeRepository $placeTypeRepository, PlaceRepository $placeRepository,
                              CityRepository $cityRepository, YandexGeoCoderService $geoCoderService)
     {
+        $errors = [];
         $entityManager = $this->getDoctrine()->getManager();
 
         $placeName = $request->get('name');
         $place = $placeRepository->findOneBy(['name' => $placeName]);
-        if (!isset($place)) {
+
+        if ($place) {
+            $errors[] = "Place $placeName already exists";
+            return $this->error($errors);
+        } else {
             $place = new Place();
             $fields = ['lat', 'lng', 'name', 'description'];
 
-            foreach ($fields as $field) {
-                $param = $request->get($field);
-                if ($param) {
-                    $place->{"set$field"}($param);
+            try {
+                foreach ($fields as $field) {
+                    $param = $request->get($field);
+                    if ($param) {
+                        $place->{"set$field"}($param);
+                    }
                 }
+            } catch (\Exception $e) {
+                $errors[] = "Invalid field '$field'";
+                return $this->error($errors);
             }
 
             $typeStr = $request->get('type');
@@ -145,49 +175,73 @@ class PlaceController extends AbstractController
             $entityManager->flush();
         }
 
-        return $this->json($place->toArray());
+        return $this->success($place->toArray());
     }
 
     /**
      * @param int $id
+     * @param Request $request
      * @param PlaceRepository $repository
      * @return JsonResponse
      * @Route("/place/{id}", name="update_place", methods={"PUT"})
      */
-    public function updatePlace(int $id, PlaceRepository $repository)
+    public function updatePlace(int $id, Request $request, PlaceRepository $repository)
     {
         $entityManager = $this->getDoctrine()->getManager();
         $place = $repository->find($id);
 
+        $errors = [];
+
         if (!$place) {
-            throw $this->createNotFoundException(
-                'No place found for id '.$id
-            );
+            $errors[] =  "No place found for id $id";
         }
 
-        $place->setName('New name!');
+        if (count($errors)) {
+            return $this->error($errors);
+        }
+
+        $fields = ['lat', 'lng', 'name', 'description'];
+
+        try {
+            foreach ($fields as $field) {
+                $param = $request->get($field);
+                if ($param) {
+                    $place->{"set$field"}($param);
+                }
+            }
+        } catch (\Exception $e) {
+            $errors[] = "Invalid field '$field'";
+            return $this->error($errors);
+        }
+
         $entityManager->flush();
 
-        return $this->json($place->toArray());
+        return $this->success($place->toArray());
     }
 
     /**
      * @param int $id
      * @param PlaceRepository $repository
      * @Route("/place{id}", name="delete_place", methods={"DELETE"})
+     * @return JsonResponse
      */
     public function deletePlace(int $id, PlaceRepository $repository)
     {
         $entityManager = $this->getDoctrine()->getManager();
         $place = $repository->find($id);
 
+        $errors = [];
+
         if (!$place) {
-            throw $this->createNotFoundException(
-                'No place found for id '.$id
-            );
+            $errors[] =  "No place found for id $id";
+        }
+
+        if (count($errors)) {
+            return $this->error($errors);
         }
 
         $entityManager->remove($place);
         $entityManager->flush();
+        return $this->success("Place $id was deleted successfully");
     }
 }
